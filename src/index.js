@@ -1,6 +1,7 @@
 const TRACKED_PIPELINES = [
   { name: "Residential V2.0", countsTowardTarget: true },
   { name: "First Nations", countsTowardTarget: true },
+  { name: "Commercial", countsTowardTarget: true },
   { name: "Service Pipeline", countsTowardTarget: false },
   { name: "Consulting", countsTowardTarget: false }
 ];

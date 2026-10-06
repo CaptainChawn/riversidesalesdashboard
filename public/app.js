@@ -1,69 +1,65 @@
 const MONTHLY_TARGET = 300000;
+const REFRESH_MS = 60 * 1000;
 
 const money = value => new Intl.NumberFormat("en-CA", {
   style: "currency", currency: "CAD", maximumFractionDigits: 0
-}).format(value || 0);
+}).format(Number(value || 0));
 
 function render(data) {
-  const now = new Date();
-  const month = now.toLocaleString("en-CA", { month: "long" }).toUpperCase();
-  const year = now.getFullYear();
+  const sales = Number(data.target?.sales || 0);
+  const deals = Number(data.target?.deals || 0);
+  const pct = MONTHLY_TARGET ? (sales / MONTHLY_TARGET) * 100 : 0;
+  const avg = deals ? sales / deals : 0;
+  const remaining = Math.max(0, MONTHLY_TARGET - sales);
 
-  const targetSales = data.target.sales;
-  const targetDeals = data.target.deals;
-  const average = targetDeals ? targetSales / targetDeals : 0;
-  const pace = MONTHLY_TARGET ? targetSales / MONTHLY_TARGET : 0;
-  const toGo = Math.max(MONTHLY_TARGET - targetSales, 0);
+  document.getElementById("monthLabel").textContent =
+    new Intl.DateTimeFormat("en-CA", { month: "long", year: "numeric" })
+      .format(new Date()).toUpperCase();
 
-  document.getElementById("monthLabel").textContent = `${month} ${year}`;
-  document.getElementById("targetSales").textContent = money(targetSales);
-  document.getElementById("soldLabel").textContent = `${money(targetSales)} SOLD`;
-  document.getElementById("targetLabel").textContent = `TARGET ${money(MONTHLY_TARGET)}`;
-  document.getElementById("toGoLabel").textContent = toGo > 0
-    ? `${money(toGo)} TO GO`
-    : `TARGET BEAT BY ${money(targetSales - MONTHLY_TARGET)}`;
-  document.getElementById("wonDeals").textContent = targetDeals.toLocaleString("en-CA");
-  document.getElementById("avgDeal").textContent = money(average);
-  document.getElementById("pace").textContent = `${Math.round(pace * 100)}%`;
-  document.getElementById("companySales").textContent = money(data.company.sales);
-  document.getElementById("companyDeals").textContent = `${data.company.deals} WON`;
-  document.getElementById("statusNote").textContent =
-    `LIVE • PIPEDRIVE • UPDATED ${new Date(data.updatedAt).toLocaleTimeString("en-CA",{hour:"numeric",minute:"2-digit"})}`;
+  document.getElementById("targetSales").textContent = money(sales);
+  document.getElementById("wins").textContent = deals;
+  document.getElementById("avgDeal").textContent = money(avg);
+  document.getElementById("pace").textContent = `${pct.toFixed(1)}%`;
+  document.getElementById("toGo").textContent = money(remaining);
+  document.getElementById("progressFill").style.width = `${Math.min(100, pct)}%`;
 
   const rows = document.getElementById("pipelineRows");
   rows.innerHTML = "";
-  data.pipelines.forEach(p => {
+  for (const p of data.pipelines || []) {
     const row = document.createElement("div");
-    row.className = `pipeline-row${p.countsTowardTarget ? " target" : ""}`;
-    row.innerHTML = `<span class="pipeline-name">${p.name.toUpperCase()}</span>
-      <span class="pipeline-money">${money(p.sales)}</span>
-      <span class="pipeline-wins">${p.deals} WON</span>`;
+    row.className = "pipeline-row";
+    row.innerHTML = `
+      <div class="pipeline-name">
+        <span class="dot"></span>
+        <span>${p.name.toUpperCase()}</span>
+        ${p.countsTowardTarget ? '<span class="tag">TARGET</span>' : ''}
+      </div>
+      <div class="pipeline-deals">${Number(p.deals || 0)}</div>
+      <div class="pipeline-sales">${money(p.sales)}</div>
+    `;
     rows.appendChild(row);
-  });
-
-  const track = document.getElementById("track");
-  track.innerHTML = "";
-  const segments = 30;
-  const lit = Math.min(segments, Math.round(pace * segments));
-  for (let i=0; i<segments; i++) {
-    const s = document.createElement("span");
-    s.className = "seg" + (i < lit ? " on" : "");
-    track.appendChild(s);
   }
+
+  document.getElementById("companyDeals").textContent = Number(data.company?.deals || 0);
+  document.getElementById("companySales").textContent = money(data.company?.sales || 0);
+
+  const updated = new Date(data.updatedAt || Date.now());
+  const t = updated.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" });
+  document.getElementById("status").textContent = `LIVE • PIPEDRIVE • ${t}`;
+  document.getElementById("lastUpdated").textContent = `AUTO REFRESH • 60 SEC • UPDATED ${t}`;
 }
 
 async function loadDashboard() {
   try {
-    document.getElementById("statusNote").textContent = "CONNECTING TO PIPEDRIVE…";
     const response = await fetch("/api/dashboard", { cache: "no-store" });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Dashboard API failed");
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     render(data);
-  } catch (err) {
-    console.error(err);
-    document.getElementById("statusNote").textContent = "PIPEDRIVE CONNECTION ERROR";
+  } catch (error) {
+    document.getElementById("status").textContent = "PIPEDRIVE CONNECTION ERROR";
+    document.getElementById("lastUpdated").textContent = error.message || "Unable to load";
   }
 }
 
 loadDashboard();
-setInterval(loadDashboard, 5 * 60 * 1000);
+setInterval(loadDashboard, REFRESH_MS);
