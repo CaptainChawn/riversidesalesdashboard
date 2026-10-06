@@ -1,25 +1,19 @@
-# Riverside Sales Dashboard - Live Pipedrive Version
+# Riverside Sales Dashboard - Cloudflare Worker
 
-## What it does
-The dashboard reads Won deals from these Pipedrive pipelines:
-- Residential V2.0
-- First Nations
-- Service Pipeline
-- Consulting
+This package is built for Cloudflare Workers + Static Assets.
 
-The $300,000 target, Won Deals, Average Deal, and Pace to Target use Residential V2.0 + First Nations only.
+## Repository structure
+- `public/` contains the TV dashboard.
+- `src/index.js` provides `/api/dashboard`.
+- `wrangler.jsonc` tells Cloudflare to serve `public/` as static assets and route `/api/*` through the Worker.
 
-The Pipeline Scoreboard and Total Company Won display all four pipelines.
+## Deploy
+Upload the contents of this package to the root of the GitHub repository. The existing Cloudflare deploy command `npx wrangler deploy` can remain.
 
-## Cloudflare setup
-1. Upload all files/folders in this package to the root of the GitHub repository.
-2. In Cloudflare Pages, open the project.
-3. Add an encrypted secret named exactly:
-   `PIPEDRIVE_API_TOKEN`
-4. Paste the Pipedrive API token as the value. Never commit it to GitHub.
-5. Redeploy the project.
+## Secret
+In Cloudflare, add the secret `PIPEDRIVE_API_TOKEN` to the deployed Worker/environment. Do not commit the token to GitHub.
 
-The dashboard refreshes automatically every 5 minutes.
+## Test
+After deployment, visit `/api/dashboard`. A successful response is JSON containing `pipelines`, `target`, `company`, and `updatedAt`.
 
-## Important
-The Pipedrive token stays server-side in the Cloudflare Pages Function. The browser only receives aggregated scoreboard totals.
+The dashboard refreshes the API every five minutes.

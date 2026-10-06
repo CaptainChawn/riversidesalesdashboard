@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Riverside Sales HQ</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="board">
+  <header class="header card">
+    <div class="brand">RIVERSIDE <span>ENERGY</span></div>
+    <div class="live"><span class="dot"></span> SALES HQ &nbsp;•&nbsp; LIVE</div>
+  </header>
+
+  <section class="hero card">
+    <div class="eyebrow" id="monthLabel"></div>
+    <div class="amount"><span id="targetSales">$0</span> <small>SALES</small></div>
+    <div class="subline">RESIDENTIAL + FIRST NATIONS</div>
+    <div class="track" id="track"></div>
+    <div class="goalrow">
+      <span id="soldLabel">$0 SOLD</span>
+      <span id="targetLabel">TARGET $300,000</span>
+      <span class="to-go" id="toGoLabel">$300,000 TO GO</span>
+    </div>
+  </section>
+
+  <section class="stats card">
+    <div class="stat"><div class="label">WON DEALS</div><div class="value" id="wonDeals">0</div></div>
+    <div class="stat"><div class="label">AVG DEAL</div><div class="value" id="avgDeal">$0</div></div>
+    <div class="stat"><div class="label">PACE TO TARGET</div><div class="value" id="pace">0%</div></div>
+  </section>
+
+  <section class="pipeline card">
+    <div class="section-title">PIPELINE SCOREBOARD <span>THIS MONTH</span></div>
+    <div class="pipeline-head"><span>PIPELINE</span><span>WON SALES</span><span>WINS</span></div>
+    <div id="pipelineRows"></div>
+    <div class="company-total">
+      <span>TOTAL COMPANY WON</span><strong id="companySales">$0</strong><strong id="companyDeals">0 WON</strong>
+    </div>
+  </section>
+</main>
+<div class="footer-note" id="statusNote">DEMO DATA • PIPEDRIVE CONNECTION NEXT</div>
+<script src="app.js"></script>
+</body>
+</html>
