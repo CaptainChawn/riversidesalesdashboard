@@ -1,62 +1,46 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#050807" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Riverside Sales HQ</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="arena-glow"></div>
-  <main class="scoreboard">
-    <header class="topbar panel">
-      <div class="brand"><span>RIVERSIDE</span> ENERGY</div>
-      <div class="hq">SALES HQ <span class="live-dot"></span><span id="statusText">DEMO</span></div>
-    </header>
+<main class="board">
+  <header class="header card">
+    <div class="brand">RIVERSIDE <span>ENERGY</span></div>
+    <div class="live"><span class="dot"></span> SALES HQ &nbsp;•&nbsp; LIVE</div>
+  </header>
 
-    <section class="hero panel">
-      <div class="period" id="periodLabel">OCTOBER 2026 · RESIDENTIAL V2.0</div>
-      <div class="score-line">
-        <div>
-          <div class="score-label">WON SALES</div>
-          <div class="score" id="monthlySales">$214,750</div>
-        </div>
-        <div class="target-box">
-          <div class="target-label">MONTHLY TARGET</div>
-          <div class="target" id="monthlyTarget">$300,000</div>
-        </div>
-      </div>
-      <div class="progress-shell"><div class="progress" id="progress"></div></div>
-      <div class="progress-copy">
-        <span id="soldCopy">$214,750 SOLD</span>
-        <strong id="paceCopy">72%</strong>
-        <span class="to-go" id="remainingCopy">$85,250 TO GO</span>
-      </div>
-    </section>
+  <section class="hero card">
+    <div class="eyebrow" id="monthLabel"></div>
+    <div class="amount"><span id="targetSales">$0</span> <small>SALES</small></div>
+    <div class="subline">RESIDENTIAL + FIRST NATIONS</div>
+    <div class="track" id="track"></div>
+    <div class="goalrow">
+      <span id="soldLabel">$0 SOLD</span>
+      <span id="targetLabel">TARGET $300,000</span>
+      <span class="to-go" id="toGoLabel">$300,000 TO GO</span>
+    </div>
+  </section>
 
-    <section class="stat-row panel">
-      <div class="stat"><span>WON DEALS</span><strong id="dealCount">12</strong></div>
-      <div class="stat"><span>AVG DEAL</span><strong id="avgDeal">$17,896</strong></div>
-      <div class="stat"><span>PACE</span><strong id="pace">72%</strong></div>
-    </section>
+  <section class="stats card">
+    <div class="stat"><div class="label">WON DEALS</div><div class="value" id="wonDeals">0</div></div>
+    <div class="stat"><div class="label">AVG DEAL</div><div class="value" id="avgDeal">$0</div></div>
+    <div class="stat"><div class="label">PACE TO TARGET</div><div class="value" id="pace">0%</div></div>
+  </section>
 
-    <section class="bottom-grid">
-      <div class="leaders panel">
-        <div class="section-head"><span>SALES LEADERS</span><small>THIS MONTH</small></div>
-        <div id="leaderboard"></div>
-      </div>
-      <aside class="season panel">
-        <div class="season-label">2026 RESIDENTIAL</div>
-        <div class="season-score" id="ytdSales">$2.84M</div>
-        <div class="season-sub">WON SALES YTD</div>
-        <div class="mini-rule"></div>
-        <div class="updated">UPDATED <span id="updatedAt">--:--</span></div>
-      </aside>
-    </section>
-  </main>
-
-  <div class="demo-tag">DEMO DATA · PIPEDRIVE CONNECTION NEXT</div>
-  <script src="app.js"></script>
+  <section class="pipeline card">
+    <div class="section-title">PIPELINE SCOREBOARD <span>THIS MONTH</span></div>
+    <div class="pipeline-head"><span>PIPELINE</span><span>WON SALES</span><span>WINS</span></div>
+    <div id="pipelineRows"></div>
+    <div class="company-total">
+      <span>TOTAL COMPANY WON</span><strong id="companySales">$0</strong><strong id="companyDeals">0 WON</strong>
+    </div>
+  </section>
+</main>
+<div class="footer-note" id="statusNote">DEMO DATA • PIPEDRIVE CONNECTION NEXT</div>
+<script src="app.js"></script>
 </body>
 </html>

@@ -1,41 +1,61 @@
-const dashboardData = {
+const dashboard = {
   monthlyTarget: 300000,
-  monthlySales: 214750,
-  dealCount: 12,
-  ytdSales: 2842500,
-  pipeline: "RESIDENTIAL V2.0",
-  leaders: [
-    { name: "STEVE", value: 82450 },
-    { name: "LEE", value: 71200 },
-    { name: "REP 3", value: 61100 }
-  ]
+  pipelines: [
+    { name: "RESIDENTIAL V2.0", sales: 221750, deals: 11, countsTowardTarget: true },
+    { name: "FIRST NATIONS", sales: 65700, deals: 3, countsTowardTarget: true },
+    { name: "SERVICE PIPELINE", sales: 31400, deals: 16, countsTowardTarget: false },
+    { name: "CONSULTING", sales: 48200, deals: 2, countsTowardTarget: false }
+  ],
+  demo: true
 };
 
-const money = n => new Intl.NumberFormat("en-CA", { style:"currency", currency:"CAD", maximumFractionDigits:0 }).format(n);
-const compactMoney = n => "$" + (n >= 1000000 ? (n/1000000).toFixed(2) + "M" : Math.round(n/1000) + "K");
+const money = value => new Intl.NumberFormat("en-CA", {
+  style: "currency", currency: "CAD", maximumFractionDigits: 0
+}).format(value);
 
-function render(data){
+function render(data) {
   const now = new Date();
-  const month = now.toLocaleString("en-CA", {month:"long"}).toUpperCase();
+  const month = now.toLocaleString("en-CA", { month: "long" }).toUpperCase();
   const year = now.getFullYear();
-  const pct = Math.min(100, Math.round((data.monthlySales/data.monthlyTarget)*100));
-  const remaining = Math.max(0, data.monthlyTarget-data.monthlySales);
-  const avg = data.dealCount ? data.monthlySales/data.dealCount : 0;
 
-  document.getElementById("periodLabel").textContent = `${month} ${year} · ${data.pipeline}`;
-  document.getElementById("monthlySales").textContent = money(data.monthlySales);
-  document.getElementById("monthlyTarget").textContent = money(data.monthlyTarget);
-  document.getElementById("soldCopy").textContent = `${money(data.monthlySales)} SOLD`;
-  document.getElementById("remainingCopy").textContent = remaining ? `${money(remaining)} TO GO` : "TARGET BEAT";
-  document.getElementById("paceCopy").textContent = `${pct}%`;
-  document.getElementById("pace").textContent = `${pct}%`;
-  document.getElementById("dealCount").textContent = data.dealCount;
-  document.getElementById("avgDeal").textContent = money(avg);
-  document.getElementById("ytdSales").textContent = compactMoney(data.ytdSales);
-  document.getElementById("progress").style.width = `${pct}%`;
-  document.getElementById("updatedAt").textContent = now.toLocaleTimeString("en-CA", {hour:"2-digit",minute:"2-digit"});
+  const targetPipelines = data.pipelines.filter(p => p.countsTowardTarget);
+  const targetSales = targetPipelines.reduce((sum,p) => sum + p.sales, 0);
+  const targetDeals = targetPipelines.reduce((sum,p) => sum + p.deals, 0);
+  const companySales = data.pipelines.reduce((sum,p) => sum + p.sales, 0);
+  const companyDeals = data.pipelines.reduce((sum,p) => sum + p.deals, 0);
+  const average = targetDeals ? targetSales / targetDeals : 0;
+  const pace = data.monthlyTarget ? targetSales / data.monthlyTarget : 0;
+  const toGo = Math.max(data.monthlyTarget - targetSales, 0);
 
-  const max = Math.max(...data.leaders.map(x=>x.value),1);
-  document.getElementById("leaderboard").innerHTML = data.leaders.map((x,i)=>`<div class="leader"><span class="rank">${String(i+1).padStart(2,"0")}</span><span class="name">${x.name}</span><span class="bar"><i style="width:${Math.round(x.value/max*100)}%"></i></span><span class="money">${money(x.value)}</span></div>`).join("");
+  document.getElementById("monthLabel").textContent = `${month} ${year}`;
+  document.getElementById("targetSales").textContent = money(targetSales);
+  document.getElementById("soldLabel").textContent = `${money(targetSales)} SOLD`;
+  document.getElementById("targetLabel").textContent = `TARGET ${money(data.monthlyTarget)}`;
+  document.getElementById("toGoLabel").textContent = toGo > 0 ? `${money(toGo)} TO GO` : `TARGET BEAT BY ${money(targetSales-data.monthlyTarget)}`;
+  document.getElementById("wonDeals").textContent = targetDeals.toLocaleString("en-CA");
+  document.getElementById("avgDeal").textContent = money(average);
+  document.getElementById("pace").textContent = `${Math.round(pace*100)}%`;
+  document.getElementById("companySales").textContent = money(companySales);
+  document.getElementById("companyDeals").textContent = `${companyDeals} WON`;
+  document.getElementById("statusNote").textContent = data.demo ? "DEMO DATA • PIPEDRIVE CONNECTION NEXT" : "LIVE • PIPEDRIVE";
+
+  const rows = document.getElementById("pipelineRows");
+  rows.innerHTML = "";
+  data.pipelines.forEach(p => {
+    const row = document.createElement("div");
+    row.className = `pipeline-row${p.countsTowardTarget ? " target" : ""}`;
+    row.innerHTML = `<span class="pipeline-name">${p.name}</span><span class="pipeline-money">${money(p.sales)}</span><span class="pipeline-wins">${p.deals} WON</span>`;
+    rows.appendChild(row);
+  });
+
+  const track = document.getElementById("track");
+  track.innerHTML = "";
+  const segments = 30;
+  const lit = Math.min(segments, Math.round(pace*segments));
+  for(let i=0;i<segments;i++){
+    const s=document.createElement("span");
+    s.className="seg"+(i<lit?" on":"");
+    track.appendChild(s);
+  }
 }
-render(dashboardData);
+render(dashboard);
