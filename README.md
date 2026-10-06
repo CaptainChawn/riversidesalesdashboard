@@ -1,23 +1,25 @@
-# Riverside Sales Dashboard
+# Riverside Sales Dashboard - Live Pipedrive Version
 
-TV-first hockey-scoreboard-style team dashboard for Riverside Energy Systems.
-
-## V1.2 scoreboard rules
-The main $300,000 monthly target is measured using:
-- Residential V2.0
-- First Nations
-
-The pipeline scoreboard separately displays:
+## What it does
+The dashboard reads Won deals from these Pipedrive pipelines:
 - Residential V2.0
 - First Nations
 - Service Pipeline
 - Consulting
 
-`TOTAL COMPANY WON` includes all four pipelines.
+The $300,000 target, Won Deals, Average Deal, and Pace to Target use Residential V2.0 + First Nations only.
 
-Top `WON DEALS` and `AVG DEAL` use only Residential V2.0 + First Nations, so they remain consistent with the $300,000 target.
+The Pipeline Scoreboard and Total Company Won display all four pipelines.
 
-## Planned Pipedrive integration
-A Cloudflare server-side function will retrieve Won deals and aggregate them by pipeline and won date. The browser will receive only scoreboard totals. The Pipedrive API token must be stored as a Cloudflare secret and never committed to GitHub.
+## Cloudflare setup
+1. Upload all files/folders in this package to the root of the GitHub repository.
+2. In Cloudflare Pages, open the project.
+3. Add an encrypted secret named exactly:
+   `PIPEDRIVE_API_TOKEN`
+4. Paste the Pipedrive API token as the value. Never commit it to GitHub.
+5. Redeploy the project.
 
-Current numbers are demo data.
+The dashboard refreshes automatically every 5 minutes.
+
+## Important
+The Pipedrive token stays server-side in the Cloudflare Pages Function. The browser only receives aggregated scoreboard totals.
