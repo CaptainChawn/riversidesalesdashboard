@@ -17,3 +17,4 @@ In Cloudflare, add the secret `PIPEDRIVE_API_TOKEN` to the deployed Worker/envir
 After deployment, visit `/api/dashboard`. A successful response is JSON containing `pipelines`, `target`, `company`, and `updatedAt`.
 
 The dashboard refreshes the API every five minutes.
+Deployment refresh.
