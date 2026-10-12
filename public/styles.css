@@ -54,3 +54,17 @@ footer{display:flex;justify-content:space-between;color:#56615b;font-size:clamp(
   .pipeline-row,.company-total{grid-template-columns:1fr 70px 130px}
   .columns{display:none}
 }
+
+.top-controls{display:flex;align-items:center;gap:.65vw}
+.sound-button,.test-button{background:#13231a;border:1px solid #356347;color:#d8ffe3;border-radius:5px;font-weight:900;letter-spacing:.08em;padding:.8em 1em;font-size:clamp(10px,.7vw,14px);cursor:pointer}
+.test-button{background:transparent;border-color:#34433a;color:#a3b2a8}
+.sound-button.enabled{border-color:#39d66f;color:#39d66f}
+.celebration[hidden]{display:none}
+.celebration{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at center,#1b482b 0%,#07110b 65%,#020604 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:1.3vw solid #39d66f;animation:goalPulse .55s ease-in-out infinite alternate}
+.goal-stripe{color:#b9efc8;font-size:clamp(12px,1.5vw,26px);font-weight:900;letter-spacing:.2em}
+.goal-word{font-size:clamp(90px,17vw,330px);line-height:1;font-weight:1000;letter-spacing:-.07em;color:#65ff91;text-shadow:0 0 50px #39d66f80}
+.goal-amount{font-size:clamp(50px,7vw,135px);font-weight:900;color:white}
+.goal-pipeline{font-size:clamp(18px,2vw,38px);letter-spacing:.18em;font-weight:900;margin-top:1vh}
+.goal-footer{font-size:clamp(12px,1.2vw,24px);font-weight:900;letter-spacing:.2em;color:#94bfa2;margin-top:4vh}
+@keyframes goalPulse{from{border-color:#287947}to{border-color:#6fff9a}}
+@media(max-width:900px){.top-controls{flex-wrap:wrap;justify-content:flex-end}.status{width:100%;text-align:right}}

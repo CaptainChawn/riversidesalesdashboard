@@ -13,7 +13,11 @@
         <div class="brand">RIVERSIDE ENERGY SYSTEMS</div>
         <div class="season">SALES HQ <span>•</span> 2026 SEASON</div>
       </div>
-      <div id="status" class="status">CONNECTING • PIPEDRIVE</div>
+      <div class="top-controls">
+        <button id="soundButton" type="button" class="sound-button">🔇 ENABLE GOAL HORNS</button>
+        <button id="testButton" type="button" class="test-button" title="Test without changing Pipedrive">TEST</button>
+        <div id="status" class="status">CONNECTING • PIPEDRIVE</div>
+      </div>
     </header>
 
     <section class="hero">
@@ -51,6 +55,13 @@
       </div>
     </section>
 
+    <section id="celebration" class="celebration" hidden aria-live="polite">
+      <div class="goal-stripe">RIVERSIDE ENERGY SYSTEMS • SALES HQ</div>
+      <div class="goal-word">GOAL!</div>
+      <div class="goal-amount" id="goalAmount">$0</div>
+      <div class="goal-pipeline" id="goalPipeline">RESIDENTIAL V2.0</div>
+      <div class="goal-footer">ANOTHER WIN ON THE BOARD</div>
+    </section>
     <footer>
       <span>ONE TEAM • ONE SCOREBOARD</span>
       <span id="lastUpdated">WAITING FOR LIVE DATA</span>

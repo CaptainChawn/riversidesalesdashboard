@@ -104,14 +104,25 @@ async function dashboard(env) {
       name: p.name,
       countsTowardTarget: p.countsTowardTarget,
       sales: deals.reduce((sum, d) => sum + Number(d.value || 0), 0),
-      deals: deals.length
+      deals: deals.length,
+      recentWins: p.countsTowardTarget
+        ? deals.map(d => ({
+            id: `${p.id}:${d.id}`,
+            amount: Number(d.value || 0),
+            pipeline: p.name,
+            wonTime: d.won_time
+          }))
+        : []
     };
   }));
 
   const targetPipelines = results.filter(p => p.countsTowardTarget);
 
   return json({
-    pipelines: results,
+    pipelines: results.map(({ recentWins, ...p }) => p),
+    recentWins: results.flatMap(p => p.recentWins)
+      .sort((a, b) => String(a.wonTime).localeCompare(String(b.wonTime)))
+      .slice(-100),
     target: {
       sales: targetPipelines.reduce((sum, p) => sum + p.sales, 0),
       deals: targetPipelines.reduce((sum, p) => sum + p.deals, 0)
