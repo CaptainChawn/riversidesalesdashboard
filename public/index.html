@@ -1,72 +1,8 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Riverside Sales HQ</title>
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <main class="board">
-    <header class="topbar">
-      <div>
-        <div class="brand">RIVERSIDE ENERGY SYSTEMS</div>
-        <div class="season">SALES HQ <span>•</span> 2026 SEASON</div>
-      </div>
-      <div class="top-controls">
-        <button id="soundButton" type="button" class="sound-button">🔇 ENABLE GOAL HORNS</button>
-        <button id="testButton" type="button" class="test-button" title="Test without changing Pipedrive">TEST</button>
-        <div id="status" class="status">CONNECTING • PIPEDRIVE</div>
-      </div>
-    </header>
-
-    <section class="hero">
-      <div id="monthLabel" class="month">CURRENT MONTH</div>
-      <div id="targetSales" class="score">$0</div>
-      <div class="target-copy">$300,000 MONTHLY TARGET</div>
-      <div class="target-scope">RESIDENTIAL V2.0 • FIRST NATIONS • COMMERCIAL</div>
-
-      <div class="progress-shell">
-        <div id="progressFill" class="progress-fill"></div>
-        <div class="milestone m0">0</div>
-        <div class="milestone m1">$100K</div>
-        <div class="milestone m2">$200K</div>
-        <div class="milestone m3">🏆 $300K</div>
-      </div>
-    </section>
-
-    <section class="stats">
-      <div class="stat"><span class="label">WINS</span><strong id="wins">0</strong></div>
-      <div class="stat"><span class="label">AVG DEAL</span><strong id="avgDeal">$0</strong></div>
-      <div class="stat"><span class="label">TARGET</span><strong id="pace">0%</strong></div>
-      <div class="stat"><span class="label">TO GO</span><strong id="toGo">$300,000</strong></div>
-    </section>
-
-    <section class="standings">
-      <div class="section-title">
-        <span>PIPELINE STANDINGS</span>
-        <span class="columns">WINS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SALES</span>
-      </div>
-      <div id="pipelineRows" class="pipeline-rows"></div>
-      <div class="company-total">
-        <span>RIVERSIDE TOTAL</span>
-        <span><b id="companyDeals">0</b> WINS</span>
-        <strong id="companySales">$0</strong>
-      </div>
-    </section>
-
-    <section id="celebration" class="celebration" hidden aria-live="polite">
-      <div class="goal-stripe">RIVERSIDE ENERGY SYSTEMS • SALES HQ</div>
-      <div class="goal-word">GOAL!</div>
-      <div class="goal-amount" id="goalAmount">$0</div>
-      <div class="goal-pipeline" id="goalPipeline">RESIDENTIAL V2.0</div>
-      <div class="goal-footer">ANOTHER WIN ON THE BOARD</div>
-    </section>
-    <footer>
-      <span>ONE TEAM • ONE SCOREBOARD</span>
-      <span id="lastUpdated">WAITING FOR LIVE DATA</span>
-    </footer>
-  </main>
-  <script src="/app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Riverside Arena</title><link rel="stylesheet" href="/styles.css"></head><body>
+<main class="board"><header><div><div class="brand">RIVERSIDE ENERGY SYSTEMS</div><div class="subtitle">ARENA • SALES HQ <span id="period"></span></div></div><div class="controls"><button id="soundButton">ENABLE HORNS</button><button id="testButton">TEST HORN</button><span id="status">CONNECTING</span></div></header>
+<section class="scoreboard"><div class="score"><label>TEAM SCORE</label><strong id="targetSales" class="led big">000000</strong><small>POINTS • CURRENT MONTH</small></div><div class="mid"><div class="riverside">RIVERSIDE</div><div class="versus">VS</div><div class="riverside">THE TARGET</div><div id="pace" class="pct">0%</div></div><div class="score"><label>TO WIN</label><strong class="led big">300000</strong><small>POINTS • MONTHLY GOAL</small></div></section>
+<div class="progress"><div id="progressFill"></div></div><section class="stats"><div><label>GOALS</label><strong id="wins" class="led">00</strong></div><div><label>PTS / GOAL</label><strong id="avgDeal" class="led">00000</strong></div><div><label>PTS NEEDED</label><strong id="toGo" class="led">300000</strong></div><div><label>TEAM GOALS</label><strong id="companyDeals" class="led">00</strong></div></section>
+<section class="lower"><article><h2>DIVISION STANDINGS</h2><div class="tablehead"><span>DIVISION</span><span>G</span><span>PTS</span></div><div id="pipelineRows"></div><div class="total"><span>RIVERSIDE TOTAL</span><span id="companySales" class="led">000000</span></div></article><article><div class="leadershead"><h2>TOP SHOOTERS</h2><span>LAST WEEK</span></div><div class="tablehead"><span>PLAYER</span><span>SHOTS ON GOAL</span></div><div id="leaderRows"></div><div class="total"><span>TEAM SHOTS</span><span id="teamShots" class="led">--</span></div><div id="leaderStatus" class="note">WAITING FOR PIPEDRIVE</div></article></section>
+<footer><span>ONE TEAM • ONE SCOREBOARD • EVERY WIN COUNTS</span><span id="lastUpdated">REFRESH • 60 SEC</span></footer></main>
+<div id="celebration" class="celebration" hidden><div>RIVERSIDE ENERGY SYSTEMS</div><div class="goalword">GOAL!</div><div id="goalAmount" class="goalamount">00000</div><div id="goalPipeline" class="goalpipeline"></div></div>
+<script src="/app.js"></script></body></html>

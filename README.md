@@ -1,30 +1,21 @@
-# Riverside Sales HQ V4
+# Riverside Arena V2
 
-Adds an on-screen GOAL celebration for **new Won deals in Residential V2.0, First Nations and Commercial only**.
+## Included
+- Red analog-style LED arena layout and hockey terminology, no dollar signs on the TV.
+- Revenue is still computed as CAD points: Residential V2.0, First Nations and Commercial count toward 300,000; Service and Consulting are company-only.
+- Goal horns: Columbus for target pipelines; Edmonton for Consulting; Chesapeake for Service if amount > 0.
+- Top Shooters: previous complete Sunday-Saturday week, custom activity type `In-Person Meeting`, filtered on `add_time`, grouped by assigned activity owner. Results are marked for verification against Pipedrive Insights.
+- TV refreshes every 60 seconds. Existing Cloudflare runtime secret `PIPEDRIVE_API_TOKEN` remains in place. No token is stored in source.
 
-## How it works
-- The dashboard polls `/api/dashboard` every 60 seconds.
-- The Worker returns aggregate totals plus up to 100 recent Won deal IDs and amounts from only the three target pipelines.
-- On the first visit, the browser records a baseline and does not celebrate historical deals.
-- Subsequently, newly observed Won deal IDs trigger an 8-second full-screen GOAL animation, with an original synthesized arena horn if enabled.
-- Seen IDs are saved in browser localStorage to prevent repeats after refresh.
-- The TV operator must press **ENABLE GOAL HORNS** once to unlock browser audio. Press **TEST** to try it without changing Pipedrive.
-- The Worker never returns customer names or addresses. The API token stays in Cloudflare runtime Secrets.
-- This is polling, not a webhook. Typical delay: up to 60 seconds while dashboard remains open.
+## Rollout and verification
+1. Extract ZIP into GitHub repository root; replace files and commit main. Check Cloudflare deployment green.
+2. Open `/api/dashboard` and inspect `appointments.status`, `appointments.complete`, `appointments.leaders` and `appointments.teamShots`. If the report is incomplete, the TV will show an explicit warning rather than a misleading leaderboard.
+3. Compare to Pipedrive Insights for the SAME previous-week window. Example screenshot supplied by user: Layne 12, Lee McKinnon 4, Steve Moe 1 for October 4-10, 2026. Note that this report's week may be Sunday-Saturday, while this implementation uses Sunday-Saturday to match the supplied screenshot; confirm week settings before rollout.
+4. On TV click ENABLE HORNS, then TEST HORN (Consulting audio). Test an actual newly Won deal in each pipeline. $0 Service wins must remain silent.
 
-## Important limits
-- If the TV is closed or asleep for more than 15 minutes after a win, it may skip that celebration, but sales totals will still update.
-- If browser localStorage is cleared, the next load establishes a new baseline.
-- Some built-in smart-TV browsers block audio after inactivity. Test on the actual TV before relying on sound.
-- The bundled horn is an original synthesized sound, **not** a Columbus or other NHL team's recording. A properly licensed recording can be integrated later.
-- The current `wonTime` recency check interprets Pipedrive's timestamp as local time in the TV browser; keep the TV time zone set to Pacific Time.
-- A webhook plus durable event storage would be the robust future upgrade.
-
-## Deploy
-Upload all files to the repository root, commit to `main`, wait for Cloudflare build success.
-Do not commit the Pipedrive token; keep `PIPEDRIVE_API_TOKEN` in Worker runtime Secrets.
-
-## Columbus goal horn audio
-- User-provided `public/columbus-goal-horn.mp3` plays for the full 20-second celebration.
-- Click ENABLE GOAL HORNS, then TEST on the TV. Some smart TV browsers do not allow unattended playback even after interaction.
-- Make sure you have the necessary rights to host/play the recording on your publicly reachable dashboard. Anyone who knows the public MP3 URL may be able to access it.
+## Known constraints
+- Activity v2 API sorts by add_time descending and pages until previous week is covered (up to 6000 activities). If the volume exceeds the guardrail, the leaderboard displays CHECK DATA VOLUME instead of inaccurate figures.
+- This reports activity creation time, not due date or completion time. Pipedrive Insights may use a different start-of-week or timezone setting. Validate before relying on it.
+- Browser localStorage remembers wins; no replay of historical deals on first load. The TV must stay awake and allow sound after user activation.
+- The goal horn MP3s are supplied by the user. Confirm rights to host recordings publicly on Cloudflare.
+- The first deployment should be considered a validation release until appointment counts match Pipedrive Insights.

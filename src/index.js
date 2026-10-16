@@ -80,6 +80,67 @@ async function currentMonthWonDeals(pipelineId, token) {
   });
 }
 
+// Previous complete Sunday-Saturday week in America/Vancouver.
+function previousWeek() {
+  const now = dateParts(new Date());
+  const localDay = new Date(`${now.year}-${now.month}-${now.day}T12:00:00Z`);
+  const dow = localDay.getUTCDay();
+  localDay.setUTCDate(localDay.getUTCDate() - dow - 7);
+  const start = localDay.toISOString().slice(0, 10);
+  localDay.setUTCDate(localDay.getUTCDate() + 7);
+  const end = localDay.toISOString().slice(0, 10);
+  return { start, endExclusive: end };
+}
+
+async function appointmentLeaderboard(token) {
+  const week = previousWeek();
+  try {
+    const [typesBody, usersBody] = await Promise.all([
+      pdFetch('/api/v1/activityTypes', token),
+      pdFetch('/api/v1/users', token)
+    ]);
+    const activityType = (typesBody.data || []).find(t =>
+      String(t.name || '').trim().toLowerCase() === 'in-person meeting');
+    if (!activityType) throw new Error('In-Person Meeting activity type not found');
+    const userNames = new Map((usersBody.data || []).map(u => [String(u.id), u.name]));
+    const counts = new Map();
+    let cursor = null;
+    let complete = false;
+    // Descending add_time: stop as soon as we reach an activity created before last week.
+    // Guard against huge data volumes instead of failing the entire scoreboard.
+    for (let page = 0; page < 12; page++) {
+      const body = await pdFetch('/api/v2/activities', token, {
+        sort_by: 'add_time', sort_direction: 'desc', limit: 500,
+        ...(cursor ? { cursor } : {})
+      });
+      const items = body.data || [];
+      for (const a of items) {
+        const created = String(a.add_time || '').slice(0, 10);
+        if (!created) continue;
+        if (created < week.start) { complete = true; break; }
+        if (created >= week.endExclusive || String(a.type) !== String(activityType.key_string)) continue;
+        const id = String(a.owner_id?.id ?? a.owner_id ?? a.user_id?.id ?? a.user_id ?? '');
+        if (id) counts.set(id, (counts.get(id) || 0) + 1);
+      }
+      if (complete) break;
+      cursor = body.additional_data?.next_cursor || null;
+      if (!cursor || !items.length) { complete = true; break; }
+    }
+    const leaders = [...counts.entries()].map(([id, shots]) => ({
+      name: userNames.get(id) || `Rep ${id}`, shots
+    })).sort((a,b) => b.shots - a.shots || a.name.localeCompare(b.name));
+    return {
+      start: week.start, end: week.endExclusive,
+      leaders, teamShots: leaders.reduce((sum,p) => sum + p.shots, 0),
+      complete,
+      status: complete ? 'READY' : 'CHECK DATA VOLUME'
+    };
+  } catch (error) {
+    return {start: week.start, end: week.endExclusive, leaders: [], teamShots: null,
+      complete: false, status: 'VERIFY PIPEDRIVE', error: String(error.message || error)};
+  }
+}
+
 async function dashboard(env) {
   if (!env.PIPEDRIVE_API_TOKEN) {
     return json({ error: "PIPEDRIVE_API_TOKEN is not configured in Cloudflare." }, 500);
@@ -105,8 +166,8 @@ async function dashboard(env) {
       countsTowardTarget: p.countsTowardTarget,
       sales: deals.reduce((sum, d) => sum + Number(d.value || 0), 0),
       deals: deals.length,
-      recentWins: p.countsTowardTarget
-        ? deals.map(d => ({
+      recentWins: true
+        ? deals.filter(d => p.name !== "Service Pipeline" || Number(d.value || 0) > 0).map(d => ({
             id: `${p.id}:${d.id}`,
             amount: Number(d.value || 0),
             pipeline: p.name,
@@ -131,6 +192,7 @@ async function dashboard(env) {
       sales: results.reduce((sum, p) => sum + p.sales, 0),
       deals: results.reduce((sum, p) => sum + p.deals, 0)
     },
+    appointments: await appointmentLeaderboard(env.PIPEDRIVE_API_TOKEN),
     updatedAt: new Date().toISOString()
   });
 }
