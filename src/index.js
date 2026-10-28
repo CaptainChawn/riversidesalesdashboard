@@ -96,48 +96,49 @@ async function appointmentLeaderboard(token) {
   const week = previousWeek();
   try {
     const [typesBody, usersBody] = await Promise.all([
-      pdFetch('/api/v1/activityTypes', token),
-      pdFetch('/api/v1/users', token)
+      pdFetch('/api/v1/activityTypes', token), pdFetch('/api/v1/users', token)
     ]);
     const activityType = (typesBody.data || []).find(t =>
       String(t.name || '').trim().toLowerCase() === 'in-person meeting');
     if (!activityType) throw new Error('In-Person Meeting activity type not found');
-    const userNames = new Map((usersBody.data || []).map(u => [String(u.id), u.name]));
+    const names = new Map((usersBody.data || []).map(u => [String(u.id), u.name]));
     const counts = new Map();
-    let cursor = null;
-    let complete = false;
-    // Descending add_time: stop as soon as we reach an activity created before last week.
-    // Guard against huge data volumes instead of failing the entire scoreboard.
-    for (let page = 0; page < 12; page++) {
+    let cursor = null, complete = false, examined = 0;
+    // Completed activities can be created months earlier. Never filter by add_time.
+    // The API returns a completion timestamp as marked_as_done_time when available.
+    // Scan completed records and sort by update_time so recently completed activities
+    // are encountered early. An incomplete scan is NOT presented as a final score.
+    for (let page = 0; page < 30; page++) {
       const body = await pdFetch('/api/v2/activities', token, {
-        sort_by: 'add_time', sort_direction: 'desc', limit: 500,
+        done: 1, sort_by: 'update_time', sort_direction: 'desc', limit: 500,
         ...(cursor ? { cursor } : {})
       });
       const items = body.data || [];
-      for (const a of items) {
-        const created = String(a.add_time || '').slice(0, 10);
-        if (!created) continue;
-        if (created < week.start) { complete = true; break; }
-        if (created >= week.endExclusive || String(a.type) !== String(activityType.key_string)) continue;
-        const id = String(a.owner_id?.id ?? a.owner_id ?? a.user_id?.id ?? a.user_id ?? '');
+      examined += items.length;
+      for (const activity of items) {
+        if (!(activity.done === true || activity.done === 1 || String(activity.done) === '1')) continue;
+        if (String(activity.type) !== String(activityType.key_string)) continue;
+        const completed = activity.marked_as_done_time || activity.done_time || activity.completed_time;
+        if (!completed) continue;
+        const date = dateParts(String(completed).includes('T') || /[zZ]|[+-]\d\d:\d\d$/.test(String(completed)) ? completed : String(completed).replace(' ', 'T') + 'Z');
+        const day = `${date.year}-${date.month}-${date.day}`;
+        if (day < week.start || day >= week.endExclusive) continue;
+        const id = String(activity.owner_id?.id ?? activity.owner_id ?? activity.user_id?.id ?? activity.user_id ?? '');
         if (id) counts.set(id, (counts.get(id) || 0) + 1);
       }
-      if (complete) break;
       cursor = body.additional_data?.next_cursor || null;
       if (!cursor || !items.length) { complete = true; break; }
     }
     const leaders = [...counts.entries()].map(([id, shots]) => ({
-      name: userNames.get(id) || `Rep ${id}`, shots
-    })).sort((a,b) => b.shots - a.shots || a.name.localeCompare(b.name));
-    return {
-      start: week.start, end: week.endExclusive,
-      leaders, teamShots: leaders.reduce((sum,p) => sum + p.shots, 0),
-      complete,
-      status: complete ? 'READY' : 'CHECK DATA VOLUME'
-    };
+      name: names.get(id) || `Rep ${id}`, shots
+    })).sort((a,b) => b.shots-a.shots || a.name.localeCompare(b.name));
+    return {start: week.start, endExclusive: week.endExclusive,
+      leaders, teamShots: leaders.reduce((sum, p) => sum+p.shots, 0),
+      complete, examined, status: complete ? 'READY' : 'INCOMPLETE ACTIVITY SCAN'};
   } catch (error) {
-    return {start: week.start, end: week.endExclusive, leaders: [], teamShots: null,
-      complete: false, status: 'VERIFY PIPEDRIVE', error: String(error.message || error)};
+    return {start: week.start, endExclusive: week.endExclusive,
+      leaders: [], teamShots: null, complete: false,
+      status: 'VERIFY PIPEDRIVE', error: String(error.message || error)};
   }
 }
 

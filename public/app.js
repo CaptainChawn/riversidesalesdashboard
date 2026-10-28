@@ -5,7 +5,38 @@ const led=n=>String(Math.max(0,Math.round(Number(n)||0))).padStart(2,'0');
 const horns={"Residential V2.0":"/columbus-goal-horn.mp3","First Nations":"/columbus-goal-horn.mp3","Commercial":"/columbus-goal-horn.mp3","Consulting":"/edmonton-goal-horn.mp3","Service Pipeline":"/chesapeake-goal-horn.mp3"};
 const audios=Object.fromEntries([...new Set(Object.values(horns))].map(path=>[path,new Audio(path)]));
 let enabled=false, seen=null, busy=false; const queue=[];
-function render(d){const t=d.target||{},c=d.company||{};const score=Number(t.sales||0),goals=Number(t.deals||0);$('targetSales').textContent=points(score);$('wins').textContent=led(goals);$('avgDeal').textContent=points(goals?score/goals:0);$('toGo').textContent=points(Math.max(0,TARGET-score));$('pace').textContent=(score/TARGET*100).toFixed(1)+'%';$('progressFill').style.width=Math.min(100,score/TARGET*100)+'%';$('companyDeals').textContent=led(c.deals);$('companySales').textContent=points(c.sales);const date=new Date();$('period').textContent='• PERIOD '+(date.getMonth()+1)+' • '+date.getFullYear();$('pipelineRows').replaceChildren();for(const p of d.pipelines||[]){const row=document.createElement('div');row.className='pipeline-row';const name=document.createElement('span');const dot=document.createElement('i');dot.className='dot';name.append(dot,document.createTextNode(p.name.toUpperCase()));const goals=document.createElement('span');goals.className='led';goals.textContent=led(p.deals);const value=document.createElement('span');value.className='led';value.textContent=points(p.sales);row.append(name,goals,value);$('pipelineRows').append(row);}const ap=d.appointments||{};$('leaderRows').replaceChildren();if(ap.complete){(ap.leaders||[]).slice(0,6).forEach((r,i)=>{const row=document.createElement('div');row.className='leader-row';const n=document.createElement('span');n.textContent=(i+1)+'. '+r.name.toUpperCase();const v=document.createElement('span');v.className='led';v.textContent=led(r.shots);row.append(n,v);$('leaderRows').append(row)});$('teamShots').textContent=led(ap.teamShots);$('leaderStatus').textContent=`${ap.start} TO ${new Date(ap.end+'T12:00:00Z').toISOString().slice(0,10)} (END EXCLUSIVE) • VERIFY AGAINST INSIGHTS`; }else{$('teamShots').textContent='--';$('leaderStatus').textContent=ap.error||ap.status||'ACTIVITY DATA UNAVAILABLE';}$('status').textContent='● LIVE PIPEDRIVE';$('lastUpdated').textContent='REFRESH 60 SEC • '+new Date(d.updatedAt).toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'});}
+function render(d) {
+ const t=d.target||{},c=d.company||{};const score=Number(t.sales||0),goals=Number(t.deals||0);
+ $('targetSales').textContent=points(score);$('wins').textContent=led(goals);
+ $('avgDeal').textContent=points(goals?score/goals:0);
+ $('toGo').textContent=points(Math.max(0,TARGET-score));
+ $('pace').textContent=(score/TARGET*100).toFixed(1)+'%';
+ $('progressFill').style.width=Math.min(100,score/TARGET*100)+'%';
+ $('companyDeals').textContent=led(c.deals);$('companySales').textContent=points(c.sales);
+ const date=new Date();$('period').textContent='PERIOD '+(date.getMonth()+1)+' · '+date.getFullYear();
+ $('pipelineRows').replaceChildren();
+ for(const p of d.pipelines||[]){
+   const row=document.createElement('div');row.className='pipeline-row'+(p.countsTowardTarget?' target':'');
+   const name=document.createElement('span'),dot=document.createElement('i');dot.className='dot';
+   name.append(dot,document.createTextNode(p.name.toUpperCase()));
+   const goalsEl=document.createElement('span');goalsEl.textContent=led(p.deals);
+   const value=document.createElement('span');value.textContent=points(p.sales);
+   row.append(name,goalsEl,value);$('pipelineRows').append(row);
+ }
+ const ap=d.appointments||{};$('leaderRows').replaceChildren();
+ if(ap.complete){
+   (ap.leaders||[]).slice(0,6).forEach((r,i)=>{
+     const row=document.createElement('div');row.className='leader-row';
+     const n=document.createElement('span');n.textContent=String(i+1).padStart(2,'0')+'  '+r.name.toUpperCase();
+     const v=document.createElement('span');v.textContent=led(r.shots);
+     row.append(n,v);$('leaderRows').append(row);
+   });
+   $('teamShots').textContent=led(ap.teamShots);
+   $('leaderStatus').textContent=`DONE · ${ap.start} THROUGH ${new Date(ap.endExclusive+'T12:00:00Z').toISOString().slice(0,10)} (END EXCLUSIVE) · VERIFY AGAINST INSIGHTS`;
+ }else{$('teamShots').textContent='--';$('leaderStatus').textContent=ap.error||ap.status||'ACTIVITY DATA UNAVAILABLE';}
+ $('status').textContent='● LIVE PIPEDRIVE';
+ $('lastUpdated').textContent='UPDATED '+new Date(d.updatedAt).toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'});
+}
 function remember(ids){try{localStorage.setItem(SEEN_KEY,JSON.stringify([...ids].slice(-1500)))}catch(e){}}
 function processWins(d){const wins=d.recentWins||[];if(seen===null){try{const saved=JSON.parse(localStorage.getItem(SEEN_KEY));seen=Array.isArray(saved)?new Set(saved):null}catch(e){}if(!seen){seen=new Set(wins.map(w=>w.id));remember(seen);return;}}const now=Date.now();for(const w of wins){if(seen.has(w.id))continue;seen.add(w.id);if(w.pipeline==='Service Pipeline'&&Number(w.amount)<=0)continue;const time=Date.parse(String(w.wonTime||'').replace(' ','T'));if(Number.isFinite(time)&&Math.abs(now-time)<15*60000&&horns[w.pipeline])queue.push(w);}remember(seen);runQueue();}
 async function runQueue(){if(busy)return;busy=true;while(queue.length){const w=queue.shift();const path=horns[w.pipeline];$('goalAmount').textContent=points(w.amount)+' PTS';$('goalPipeline').textContent=w.pipeline.toUpperCase()+' SCORES';$('celebration').hidden=false;const audio=audios[path];if(enabled&&audio){try{audio.pause();audio.currentTime=0;await audio.play()}catch(e){enabled=false;$('soundButton').textContent='ENABLE HORNS';}}await new Promise(r=>setTimeout(r,20500));if(audio){audio.pause();audio.currentTime=0;}$('celebration').hidden=true;await new Promise(r=>setTimeout(r,400));}busy=false;}
