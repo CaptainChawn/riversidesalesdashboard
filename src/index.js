@@ -110,13 +110,13 @@ async function appointmentLeaderboard(token) {
     // are encountered early. An incomplete scan is NOT presented as a final score.
     for (let page = 0; page < 30; page++) {
       const body = await pdFetch('/api/v2/activities', token, {
-        done: 1, sort_by: 'update_time', sort_direction: 'desc', limit: 500,
+        done: true, sort_by: 'update_time', sort_direction: 'desc', limit: 500,
         ...(cursor ? { cursor } : {})
       });
       const items = body.data || [];
       examined += items.length;
       for (const activity of items) {
-        if (!(activity.done === true || activity.done === 1 || String(activity.done) === '1')) continue;
+        if (!(activity.done === true || activity.done === 1 || String(activity.done).toLowerCase() === 'true' || String(activity.done) === '1')) continue;
         if (String(activity.type) !== String(activityType.key_string)) continue;
         const completed = activity.marked_as_done_time || activity.done_time || activity.completed_time;
         if (!completed) continue;
