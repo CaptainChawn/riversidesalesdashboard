@@ -193,7 +193,12 @@ async function dashboard(env) {
       sales: results.reduce((sum, p) => sum + p.sales, 0),
       deals: results.reduce((sum, p) => sum + p.deals, 0)
     },
-    appointments: await appointmentLeaderboard(env.PIPEDRIVE_API_TOKEN),
+appointments: {
+  leaders: [],
+  teamShots: null,
+  complete: false,
+  status: "TEMPORARILY DISABLED"
+},
     updatedAt: new Date().toISOString()
   });
 }
