@@ -110,13 +110,13 @@ async function appointmentLeaderboard(token) {
     // are encountered early. An incomplete scan is NOT presented as a final score.
     for (let page = 0; page < 30; page++) {
       const body = await pdFetch('/api/v2/activities', token, {
-        done: true, sort_by: 'update_time', sort_direction: 'desc', limit: 500,
+        done: 1, sort_by: 'update_time', sort_direction: 'desc', limit: 500,
         ...(cursor ? { cursor } : {})
       });
       const items = body.data || [];
       examined += items.length;
       for (const activity of items) {
-        if (!(activity.done === true || activity.done === 1 || String(activity.done).toLowerCase() === 'true' || String(activity.done) === '1')) continue;
+        if (!(activity.done === true || activity.done === 1 || String(activity.done) === '1')) continue;
         if (String(activity.type) !== String(activityType.key_string)) continue;
         const completed = activity.marked_as_done_time || activity.done_time || activity.completed_time;
         if (!completed) continue;
@@ -160,6 +160,10 @@ async function dashboard(env) {
     return { ...config, id: found.id };
   });
 
+  // One user lookup per dashboard refresh, never one lookup per deal.
+  // Personal horns are selected by the resolved Pipedrive deal owner.
+  const usersBody = await pdFetch("/api/v1/users", env.PIPEDRIVE_API_TOKEN);
+  const usersById = new Map((usersBody.data || []).map(u => [String(u.id), String(u.name || "")]));
   const results = await Promise.all(resolved.map(async p => {
     const deals = await currentMonthWonDeals(p.id, env.PIPEDRIVE_API_TOKEN);
     return {
@@ -172,7 +176,9 @@ async function dashboard(env) {
             id: `${p.id}:${d.id}`,
             amount: Number(d.value || 0),
             pipeline: p.name,
-            wonTime: d.won_time
+            wonTime: d.won_time,
+            ownerId: String(d.owner_id?.id ?? d.owner_id ?? d.user_id?.id ?? d.user_id ?? ""),
+            ownerName: usersById.get(String(d.owner_id?.id ?? d.owner_id ?? d.user_id?.id ?? d.user_id ?? "")) || ""
           }))
         : []
     };
@@ -193,12 +199,10 @@ async function dashboard(env) {
       sales: results.reduce((sum, p) => sum + p.sales, 0),
       deals: results.reduce((sum, p) => sum + p.deals, 0)
     },
-appointments: {
-  leaders: [],
-  teamShots: null,
-  complete: false,
-  status: "TEMPORARILY DISABLED"
-},
+    appointments: {
+      leaders: [], teamShots: null, complete: false,
+      status: "TEMPORARILY DISABLED — ACTIVITY SCAN PAUSED"
+    },
     updatedAt: new Date().toISOString()
   });
 }
