@@ -2,8 +2,8 @@ const TRACKED_PIPELINES = [
   { name: "Residential V2.0", countsTowardTarget: true },
   { name: "First Nations", countsTowardTarget: true },
   { name: "Commercial", countsTowardTarget: true },
-  { name: "Service Pipeline", countsTowardTarget: false },
-  { name: "Consulting", countsTowardTarget: false }
+  { name: "Service Pipeline", countsTowardTarget: true },
+  { name: "Consulting", countsTowardTarget: true }
 ];
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
@@ -55,31 +55,49 @@ function monthStartRFC3339() {
   return `${now.year}-${now.month}-01T00:00:00Z`;
 }
 
-async function currentMonthWonDeals(pipelineId, token) {
-  const deals = [];
-  let cursor = null;
-
+function monthInfo(offset=0) {
+  const now=dateParts(new Date());
+  const date=new Date(Date.UTC(Number(now.year),Number(now.month)-1+offset,1,12));
+  return {year:String(date.getUTCFullYear()),month:String(date.getUTCMonth()+1).padStart(2,"0")};
+}
+async function monthWonDeals(pipelineId,token,offset=0) {
+  const month=monthInfo(offset);
+  const deals=[];let cursor=null;let pages=0;
   do {
-    const body = await pdFetch("/api/v2/deals", token, {
-      pipeline_id: pipelineId,
-      status: "won",
-      updated_since: monthStartRFC3339(),
-      limit: 500,
-      ...(cursor ? { cursor } : {})
+    const body=await pdFetch("/api/v2/deals",token,{
+      pipeline_id:pipelineId,status:"won",
+      updated_since:`${month.year}-${month.month}-01T00:00:00Z`,
+      limit:500,...(cursor?{cursor}:{})
     });
-
-    deals.push(...(body.data || []));
-    cursor = body.additional_data?.next_cursor || null;
-  } while (cursor);
-
-  const today = dateParts(new Date());
-  return deals.filter(d => {
-    if (!d.won_time) return false;
-    const dp = pipedriveDate(d.won_time);
-    return dp.year === today.year && dp.month === today.month;
+    deals.push(...(body.data||[]));
+    cursor=body.additional_data?.next_cursor||null;
+    if(++pages>=12 && cursor) throw new Error("Deal pagination safety limit reached");
+  }while(cursor);
+  return deals.filter(d=>{
+    if(!d.won_time)return false;
+    const p=pipedriveDate(d.won_time);
+    return p.year===month.year&&p.month===month.month;
   });
 }
-
+async function currentMonthWonDeals(id,token){return monthWonDeals(id,token,0);}
+async function lastMonthSnapshot(env,resolved){
+  const m=monthInfo(-1);
+  const cacheKey=new Request(`https://arena-cache.internal/last-month/${m.year}-${m.month}`);
+  const cache=caches.default;
+  const existing=await cache.match(cacheKey);
+  if(existing)return existing.json();
+  const rows=await Promise.all(resolved.map(async p=>{
+    const deals=await monthWonDeals(p.id,env.PIPEDRIVE_API_TOKEN,-1);
+    return {name:p.name,sales:deals.reduce((n,d)=>n+Number(d.value||0),0),
+      deals:deals.filter(d=>p.name!=="Service Pipeline"||Number(d.value||0)>0).length};
+  }));
+  const snapshot={month:`${m.year}-${m.month}`,sales:rows.reduce((n,p)=>n+p.sales,0),
+    deals:rows.reduce((n,p)=>n+p.deals,0),pipelines:rows};
+  await cache.put(cacheKey,new Response(JSON.stringify(snapshot),{
+    headers:{"cache-control":"public, max-age=43200","content-type":"application/json"}
+  }));
+  return snapshot;
+}
 // Previous complete Sunday-Saturday week in America/Vancouver.
 function previousWeek() {
   const now = dateParts(new Date());
@@ -170,7 +188,7 @@ async function dashboard(env) {
       name: p.name,
       countsTowardTarget: p.countsTowardTarget,
       sales: deals.reduce((sum, d) => sum + Number(d.value || 0), 0),
-      deals: deals.length,
+      deals: deals.filter(d => p.name !== "Service Pipeline" || Number(d.value || 0) > 0).length,
       recentWins: true
         ? deals.filter(d => p.name !== "Service Pipeline" || Number(d.value || 0) > 0).map(d => ({
             id: `${p.id}:${d.id}`,
@@ -184,7 +202,10 @@ async function dashboard(env) {
     };
   }));
 
-  const targetPipelines = results.filter(p => p.countsTowardTarget);
+  const targetPipelines = results;
+  let lastMonth=null;
+  try { lastMonth=await lastMonthSnapshot(env,resolved); }
+  catch(error) { lastMonth={error:"Previous-month statistics unavailable"}; }
 
   return json({
     pipelines: results.map(({ recentWins, ...p }) => p),
@@ -199,6 +220,7 @@ async function dashboard(env) {
       sales: results.reduce((sum, p) => sum + p.sales, 0),
       deals: results.reduce((sum, p) => sum + p.deals, 0)
     },
+    lastMonth,
     appointments: {
       leaders: [], teamShots: null, complete: false,
       status: "TEMPORARILY DISABLED — ACTIVITY SCAN PAUSED"

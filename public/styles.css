@@ -5,3 +5,16 @@
 .goalplayer{font-size:clamp(28px,4.4vw,86px);color:#fff;letter-spacing:.09em}
 .goalamount{font-size:clamp(45px,6.5vw,125px);color:#72e7a5;letter-spacing:.035em}
 .goalpipeline{font-size:clamp(18px,2.2vw,43px);color:#c3e9d4;letter-spacing:.12em}
+
+/* V3: previous month summary + individual horn tests */
+.board{grid-template-rows:9% 25% 11% 9% minmax(0,1fr) 8%;gap:1.1vh}
+.last-month{display:flex;align-items:center;justify-content:space-around;padding:1vh 1vw;gap:2vw}
+.last-month-title{color:#6be5a2;font-size:clamp(12px,1.1vw,21px);font-weight:900}
+.last-month-title span{display:block;color:#a5c1cf;font-size:.7em;margin-top:.5vh}
+.last-month>div:not(:first-child){display:flex;align-items:center;gap:1vw}
+.last-month small{font-size:clamp(9px,.72vw,14px);color:#93aeba;font-weight:850}
+.last-month strong{font-size:clamp(18px,1.8vw,35px);font-variant-numeric:tabular-nums}
+.footer-actions{align-items:center;flex-wrap:wrap;gap:.3vw}
+.footer-actions button{padding:.6vh .65vw}
+.test-label{font-size:clamp(9px,.7vw,13px);color:#90abb8}
+@media(max-width:850px){.board{grid-template-rows:auto}.last-month{flex-wrap:wrap;gap:12px}}

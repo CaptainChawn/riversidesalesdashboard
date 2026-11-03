@@ -1,21 +1,28 @@
-# Riverside Arena: personalized goal celebrations
+# Riverside Arena V3: personal horns + previous-month scoreboard
 
-## Deploy
-Upload the **contents** of this package to the root of the existing GitHub repository and commit to `main`. Cloudflare Workers will deploy normally. Keep the existing Cloudflare runtime secret `PIPEDRIVE_API_TOKEN` in place.
+## Installation
+Upload the **contents** of this ZIP to the root of your existing GitHub repository, replacing matching files. Commit to `main` and allow Cloudflare Workers to deploy. Keep the existing `PIPEDRIVE_API_TOKEN` runtime secret.
 
-## New behavior
-- GOoooooAL! / Deal owner / $ amount / pipeline, shown for ~20 seconds.
-- Lee McKinnon's Won deals use the included Boston recording (owner name resolved from Pipedrive).
-- All other deals retain their existing pipeline horn.
-- Service Pipeline wins worth $0 do not celebrate, even if owned by Lee.
-- TEST HORN simulates Lee's celebration, without changing Pipedrive.
-- All existing won-deal de-duplication and 60-second refresh behavior is retained.
+## What's new
+- Lee McKinnon: Boston horn, matched by confirmed Pipedrive owner ID `23026407` (and name fallback).
+- Steve Moe: Vancouver Canucks horn, matched by Pipedrive owner name. Once Steve's owner ID is known, it can be added to `PERSONAL_HORNS_BY_ID` in `public/app.js`.
+- Layne Clarke: Columbus horn. Other sales reps fall back to their division horn.
+- Service and Consulting keep Chesapeake and Edmonton horns.
+- Five dedicated TEST buttons: Layne, Lee, Steve, Service, Consulting. TEST uses example data and never changes Pipedrive.
+- All five divisions contribute to the $300,000 monthly company target.
+- Division standings are sorted by current-month points on every refresh (more frequently than the requested twice daily).
+- Previous calendar month's score, qualifying goals and target percentage shown in a compact summary. Last-month API fetch is cached in Cloudflare's per-location cache for 12 hours, with an error fallback.
+- $0 Service deals do not trigger a celebration and are excluded from the GOALS count.
+- Existing audio files and horn rules preserved; milestone audio not included.
+- Static JS/CSS cache-busting query version applied.
 
-## Performance safeguard
-The historical Pipedrive activity scan remains **temporarily disabled**, as in the emergency hotfix, to avoid recurrence of Cloudflare 1102. TOP SHOOTERS will display unavailable until we implement bounded/cached activity reporting. This package does **not** restore the expensive scan.
+## Known limitation
+TOP SHOOTERS remains temporarily disabled because the previous historical activity scan triggered Cloudflare 1102 resource errors. This build deliberately does not restore the unbounded activity scan. It needs a separate bounded/weekly persistent snapshot implementation.
 
 ## Validation
-1. Open `/api/dashboard` and confirm `recentWins` entries now contain `ownerId` and `ownerName`.
-2. If Lee's ownerName is blank or unexpected, the system falls back to the pipeline horn. The deal-owner ID field may require adjustment to match your Pipedrive response.
-3. Click ENABLE HORNS and TEST HORN on the office TV.
-4. Verify an actual new Won deal after deployment. Existing Won deals will not replay on reload.
+1. Open `/api/dashboard` and verify `lastMonth` has sales and goals and that `recentWins` has owner names.
+2. Open the dashboard and click ENABLE HORNS, then each of the five TEST buttons.
+3. Confirm Lee's Boston horn and Steve's Vancouver horn and the personalized GOAL screen.
+4. Confirm division rankings and that the TEAM SCORE equals ALL DIVISIONS.
+5. Existing wins will not replay because of the stored seen-win IDs. Use test buttons to verify horns.
+6. If Cloudflare Error 1102 returns, inspect Worker logs for CPU/subrequest limits.

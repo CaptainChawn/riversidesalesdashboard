@@ -3,19 +3,25 @@ const $=id=>document.getElementById(id);
 const points=n=>Math.round(Number(n)||0).toLocaleString('en-CA');
 const led=n=>String(Math.max(0,Math.round(Number(n)||0))).padStart(2,'0');
 const horns={"Residential V2.0":"/columbus-goal-horn.mp3","First Nations":"/columbus-goal-horn.mp3","Commercial":"/columbus-goal-horn.mp3","Consulting":"/edmonton-goal-horn.mp3","Service Pipeline":"/chesapeake-goal-horn.mp3"};
-const PERSONAL_HORNS = {"lee mckinnon":"/lee-boston-goal-horn.mp3"};
-const hornPaths=[...new Set([...Object.values(horns),...Object.values(PERSONAL_HORNS)])];
+const PERSONAL_HORNS_BY_ID={"23026407":"/lee-boston-goal-horn.mp3"};
+const PERSONAL_HORNS_BY_NAME={
+ "lee mckinnon":"/lee-boston-goal-horn.mp3",
+ "steve moe":"/steve-canucks-goal-horn.mp3",
+ "layne clarke":"/columbus-goal-horn.mp3"
+};
+const hornPaths=[...new Set([...Object.values(horns),...Object.values(PERSONAL_HORNS_BY_ID),...Object.values(PERSONAL_HORNS_BY_NAME)])];
 const audios=Object.fromEntries(hornPaths.map(path=>[path,new Audio(path)]));
 function hornFor(w){
  const owner=String(w.ownerName||"").trim().toLowerCase();
- return PERSONAL_HORNS[owner] || horns[w.pipeline];
+ return PERSONAL_HORNS_BY_ID[String(w.ownerId||"")] ||
+   PERSONAL_HORNS_BY_NAME[owner] || horns[w.pipeline];
 }
 function playerFor(w){
  return String(w.ownerName||"").trim() || "RIVERSIDE ENERGY SYSTEMS";
 }
 let enabled=false, seen=null, busy=false; const queue=[];
 function render(d) {
- const t=d.target||{},c=d.company||{};const score=Number(t.sales||0),goals=Number(t.deals||0);
+ const t=d.target||{},c=d.company||{};const score=Number(c.sales||0),goals=Number(c.deals||0);
  $('targetSales').textContent=points(score);$('wins').textContent=led(goals);
  $('avgDeal').textContent=points(goals?score/goals:0);
  $('toGo').textContent=points(Math.max(0,TARGET-score));
@@ -24,7 +30,7 @@ function render(d) {
  $('companyDeals').textContent=led(c.deals);$('companySales').textContent=points(c.sales);
  const date=new Date();$('period').textContent='PERIOD '+(date.getMonth()+1)+' · '+date.getFullYear();
  $('pipelineRows').replaceChildren();
- for(const p of d.pipelines||[]){
+ for(const p of [...(d.pipelines||[])].sort((a,b)=>b.sales-a.sales||b.deals-a.deals||a.name.localeCompare(b.name))){
    const row=document.createElement('div');row.className='pipeline-row'+(p.countsTowardTarget?' target':'');
    const name=document.createElement('span'),dot=document.createElement('i');dot.className='dot';
    name.append(dot,document.createTextNode(p.name.toUpperCase()));
@@ -43,6 +49,11 @@ function render(d) {
    $('teamShots').textContent=led(ap.teamShots);
    $('leaderStatus').textContent=`DONE · ${ap.start} THROUGH ${new Date(ap.endExclusive+'T12:00:00Z').toISOString().slice(0,10)} (END EXCLUSIVE) · VERIFY AGAINST INSIGHTS`;
  }else{$('teamShots').textContent='--';$('leaderStatus').textContent=ap.error||ap.status||'ACTIVITY DATA UNAVAILABLE';}
+ const lm=d.lastMonth||{};
+ $('lastMonthLabel').textContent=lm.month?new Date(lm.month+'-15T12:00:00Z').toLocaleDateString('en-CA',{month:'long',year:'numeric',timeZone:'UTC'}).toUpperCase():'LAST MONTH';
+ $('lastMonthScore').textContent=lm.sales==null?'--':points(lm.sales);
+ $('lastMonthGoals').textContent=lm.deals==null?'--':led(lm.deals);
+ $('lastMonthPct').textContent=lm.sales==null?'--':(lm.sales/TARGET*100).toFixed(1)+'%';
  $('status').textContent='● LIVE PIPEDRIVE';
  $('lastUpdated').textContent='UPDATED '+new Date(d.updatedAt).toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'});
 }
@@ -53,6 +64,16 @@ async function runQueue(){if(busy)return;busy=true;while(queue.length){const w=q
  $('goalAmount').textContent='$'+points(w.amount);
  $('goalPipeline').textContent=String(w.pipeline||"").toUpperCase();$('celebration').hidden=false;const audio=audios[path];if(enabled&&audio){try{audio.pause();audio.currentTime=0;await audio.play()}catch(e){enabled=false;$('soundButton').textContent='ENABLE HORNS';}}await new Promise(r=>setTimeout(r,20500));if(audio){audio.pause();audio.currentTime=0;}$('celebration').hidden=true;await new Promise(r=>setTimeout(r,400));}busy=false;}
 $('soundButton').addEventListener('click',async()=>{try{for(const a of Object.values(audios)){a.muted=true;await a.play();a.pause();a.currentTime=0;a.muted=false;}enabled=true;$('soundButton').textContent='HORNS ENABLED';$('soundButton').classList.add('enabled')}catch(e){enabled=false;$('soundButton').textContent='AUDIO BLOCKED • RETRY';}});
-$('testButton').addEventListener('click',()=>{queue.push({pipeline:'Residential V2.0',amount:24850,ownerName:'Lee McKinnon'});runQueue()});
+document.querySelectorAll('[data-test-horn]').forEach(button=>button.addEventListener('click',()=>{
+ const kind=button.dataset.testHorn;
+ const examples={
+   lee:{pipeline:'Residential V2.0',amount:24850,ownerName:'Lee Mckinnon',ownerId:'23026407'},
+   steve:{pipeline:'Residential V2.0',amount:18750,ownerName:'Steve Moe'},
+   layne:{pipeline:'First Nations',amount:32500,ownerName:'Layne Clarke'},
+   service:{pipeline:'Service Pipeline',amount:8500,ownerName:'Riverside Service'},
+   consulting:{pipeline:'Consulting',amount:26000,ownerName:'Riverside Consulting'}
+ };
+ if(examples[kind]){queue.push(examples[kind]);runQueue();}
+}));
 async function refresh(){try{const r=await fetch('/api/dashboard',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'API ERROR');render(d);processWins(d);}catch(e){$('status').textContent='CONNECTION ERROR';$('lastUpdated').textContent=e.message;}}
 refresh();setInterval(refresh,REFRESH);
