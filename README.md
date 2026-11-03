@@ -5,8 +5,8 @@ Upload the **contents** of this ZIP to the root of your existing GitHub reposito
 
 ## What's new
 - Lee McKinnon: Boston horn, matched by confirmed Pipedrive owner ID `23026407` (and name fallback).
-- Steve Moe: Vancouver Canucks horn, matched by Pipedrive owner name. Once Steve's owner ID is known, it can be added to `PERSONAL_HORNS_BY_ID` in `public/app.js`.
-- Layne Clarke: Columbus horn. Other sales reps fall back to their division horn.
+- Steve Moe: Columbus Blue Jackets horn, matched by Pipedrive owner name. Once Steve's owner ID is known, it can be added to `PERSONAL_HORNS_BY_ID` in `public/app.js`.
+- Layne Clarke: Vancouver Canucks horn. Other sales reps fall back to their division horn.
 - Service and Consulting keep Chesapeake and Edmonton horns.
 - Five dedicated TEST buttons: Layne, Lee, Steve, Service, Consulting. TEST uses example data and never changes Pipedrive.
 - All five divisions contribute to the $300,000 monthly company target.
@@ -22,7 +22,7 @@ TOP SHOOTERS remains temporarily disabled because the previous historical activi
 ## Validation
 1. Open `/api/dashboard` and verify `lastMonth` has sales and goals and that `recentWins` has owner names.
 2. Open the dashboard and click ENABLE HORNS, then each of the five TEST buttons.
-3. Confirm Lee's Boston horn and Steve's Vancouver horn and the personalized GOAL screen.
+3. Confirm Lee's Boston horn and Steve's Columbus horn and the personalized GOAL screen.
 4. Confirm division rankings and that the TEAM SCORE equals ALL DIVISIONS.
 5. Existing wins will not replay because of the stored seen-win IDs. Use test buttons to verify horns.
 6. If Cloudflare Error 1102 returns, inspect Worker logs for CPU/subrequest limits.
