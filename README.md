@@ -26,3 +26,6 @@ TOP SHOOTERS remains temporarily disabled because the previous historical activi
 4. Confirm division rankings and that the TEAM SCORE equals ALL DIVISIONS.
 5. Existing wins will not replay because of the stored seen-win IDs. Use test buttons to verify horns.
 6. If Cloudflare Error 1102 returns, inspect Worker logs for CPU/subrequest limits.
+
+## Layne horn fix (Nov 3)
+Pipedrive returns ownerId `23013559` and ownerName `Layne`. Match by ID to Vancouver Canucks horn; add `layne` name fallback. Refresh TV browser after deploy. Old wins do not replay automatically.

@@ -3,11 +3,12 @@ const $=id=>document.getElementById(id);
 const points=n=>Math.round(Number(n)||0).toLocaleString('en-CA');
 const led=n=>String(Math.max(0,Math.round(Number(n)||0))).padStart(2,'0');
 const horns={"Residential V2.0":"/columbus-goal-horn.mp3","First Nations":"/columbus-goal-horn.mp3","Commercial":"/columbus-goal-horn.mp3","Consulting":"/edmonton-goal-horn.mp3","Service Pipeline":"/chesapeake-goal-horn.mp3"};
-const PERSONAL_HORNS_BY_ID={"23026407":"/lee-boston-goal-horn.mp3"};
+const PERSONAL_HORNS_BY_ID={"23026407":"/lee-boston-goal-horn.mp3","23013559":"/steve-canucks-goal-horn.mp3"};
 const PERSONAL_HORNS_BY_NAME={
  "lee mckinnon":"/lee-boston-goal-horn.mp3",
  "steve moe":"/columbus-goal-horn.mp3",
- "layne clarke":"/steve-canucks-goal-horn.mp3"
+ "layne clarke":"/steve-canucks-goal-horn.mp3",
+ "layne":"/steve-canucks-goal-horn.mp3"
 };
 const hornPaths=[...new Set([...Object.values(horns),...Object.values(PERSONAL_HORNS_BY_ID),...Object.values(PERSONAL_HORNS_BY_NAME)])];
 const audios=Object.fromEntries(hornPaths.map(path=>[path,new Audio(path)]));
