@@ -47,7 +47,7 @@ function render(d) {
      const v=document.createElement('span');v.textContent=led(r.shots);
      row.append(n,v);$('leaderRows').append(row);
    });
-   $('teamShots').textContent=led(ap.teamShots);
+   $('teamShots').textContent=(ap.complete?'': '≥')+led(ap.teamShots);
    $('leaderStatus').textContent=`${ap.start} TO ${ap.endExclusive} (END EXCLUSIVE) · ${ap.status||'READY'} · UPDATED WEEKLY`;
  }else{$('teamShots').textContent=ap.teamShots==null?'--':led(ap.teamShots);$('leaderStatus').textContent=ap.error||ap.status||'ACTIVITY DATA UNAVAILABLE';}
  const lm=d.lastMonth||{};

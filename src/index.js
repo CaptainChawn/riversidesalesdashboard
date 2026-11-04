@@ -113,6 +113,10 @@ function previousWeek() {
 }
 
 // Runs only in a scheduled Worker, never in the live dashboard request.
+// V3.3: bound activity retrieval by last update time. A completed activity's
+// update_time cannot precede the act of marking it done. Use the day BEFORE
+// the reporting week as a timezone-safe lower bound, then filter by actual
+// marked_as_done_time in America/Vancouver.
 async function calculateWeeklyShooters(token) {
   const week=previousWeek();
   const [typesBody,usersBody]=await Promise.all([
@@ -121,24 +125,33 @@ async function calculateWeeklyShooters(token) {
   const type=(typesBody.data||[]).find(t=>String(t.name||'').trim().toLowerCase()==='in-person meeting');
   if(!type) throw new Error('In-Person Meeting activity type not found');
   const names=new Map((usersBody.data||[]).map(u=>[String(u.id),String(u.name||'')]));
-  const counts=new Map();let cursor=null,examined=0,complete=false;
-  const seenIds=new Set();
-  // Bound request volume. Incomplete snapshots are clearly labelled, never silently presented as final.
-  for(let page=0;page<8;page++) {
+  const startDate=new Date(`${week.start}T00:00:00Z`);
+  startDate.setUTCDate(startDate.getUTCDate()-1);
+  const updatedSince=startDate.toISOString();
+  const counts=new Map(),seenIds=new Set();
+  let cursor=null,examined=0,complete=false,pages=0,missingCompletionTime=0;
+  // Pipedrive v2 supports done + updated_since but NOT a type parameter.
+  // Local type filtering is intentional. Cursor exhaustion proves completeness
+  // for the query as of the snapshot time. Never claim READY at a page cap.
+  for(let page=0;page<16;page++) {
     const body=await pdFetch('/api/v2/activities',token,{
-      done:true,sort_by:'update_time',sort_direction:'desc',limit:500,
+      done:true,updated_since:updatedSince,
+      sort_by:'update_time',sort_direction:'asc',limit:500,
       ...(cursor?{cursor}:{})
     });
+    pages++;
     const items=body.data||[];examined+=items.length;
     for(const activity of items){
       if(!(activity.done===true||activity.done===1||String(activity.done)==='1'))continue;
       if(String(activity.type)!==String(type.key_string))continue;
       const completed=activity.marked_as_done_time||activity.done_time||activity.completed_time;
-      if(!completed)continue;
-      // Pipedrive often returns UTC timestamps as 'YYYY-MM-DD HH:mm:ss'.
-      const parsed=String(completed).includes('T')||/[zZ]|[+-]\d\d:\d\d$/.test(String(completed))
-        ? completed:String(completed).replace(' ','T')+'Z';
-      const d=dateParts(parsed),day=`${d.year}-${d.month}-${d.day}`;
+      if(!completed){missingCompletionTime++;continue;}
+      const raw=String(completed);
+      const parsed=raw.includes('T')||/[zZ]|[+-]\d\d:\d\d$/.test(raw)
+        ?raw:raw.replace(' ','T')+'Z';
+      const date=new Date(parsed);
+      if(Number.isNaN(date.getTime())){missingCompletionTime++;continue;}
+      const d=dateParts(date),day=`${d.year}-${d.month}-${d.day}`;
       if(day<week.start||day>=week.endExclusive)continue;
       const id=String(activity.id||'');if(id&&seenIds.has(id))continue;
       if(id)seenIds.add(id);
@@ -147,14 +160,15 @@ async function calculateWeeklyShooters(token) {
     }
     cursor=body.additional_data?.next_cursor||null;
     if(!cursor||!items.length){complete=true;break;}
-    // update_time is sorted descending. Once an entire page is older than the end of
-    // the target week, there may still be late-edited completions, so do not claim completeness.
   }
   const leaders=[...counts].map(([id,shots])=>({name:names.get(id)||`Rep ${id}`,shots}))
     .sort((a,b)=>b.shots-a.shots||a.name.localeCompare(b.name));
-  return {...week,leaders,teamShots:leaders.reduce((n,r)=>n+r.shots,0),complete,
-    examined,status:complete?'READY':'PARTIAL — ACTIVITY PAGE LIMIT',
-    calculatedAt:new Date().toISOString()};
+  const verified=complete&&missingCompletionTime===0;
+  return {...week,leaders,teamShots:leaders.reduce((n,r)=>n+r.shots,0),
+    complete:verified,examined,pages,missingCompletionTime,
+    status:!complete?'PARTIAL — ACTIVITY PAGE LIMIT':
+      missingCompletionTime?'PARTIAL — MISSING COMPLETION DATES':'READY',
+    calculatedAt:new Date().toISOString(),method:'UPDATED SINCE WEEK START · COMPLETION DATE'};
 }
 async function readWeeklyShooters(env){
   const week=previousWeek();
