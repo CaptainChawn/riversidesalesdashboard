@@ -28,7 +28,7 @@ function render(d) {
  $('toGo').textContent=points(Math.max(0,TARGET-score));
  $('pace').textContent=(score/TARGET*100).toFixed(1)+'%';
  $('progressFill').style.width=Math.min(100,score/TARGET*100)+'%';
- $('companyDeals').textContent=led(c.deals);$('companySales').textContent=points(c.sales);
+ $('companySales').textContent=points(c.sales);
  const date=new Date();$('period').textContent='PERIOD '+(date.getMonth()+1)+' · '+date.getFullYear();
  $('pipelineRows').replaceChildren();
  for(const p of [...(d.pipelines||[])].sort((a,b)=>b.sales-a.sales||b.deals-a.deals||a.name.localeCompare(b.name))){
