@@ -40,7 +40,7 @@ function render(d) {
    row.append(name,goalsEl,value);$('pipelineRows').append(row);
  }
  const ap=d.appointments||{};$('leaderRows').replaceChildren();
- if(ap.complete){
+ if(ap.complete || (ap.leaders||[]).length){
    (ap.leaders||[]).slice(0,6).forEach((r,i)=>{
      const row=document.createElement('div');row.className='leader-row';
      const n=document.createElement('span');n.textContent=String(i+1).padStart(2,'0')+'  '+r.name.toUpperCase();
@@ -48,13 +48,15 @@ function render(d) {
      row.append(n,v);$('leaderRows').append(row);
    });
    $('teamShots').textContent=led(ap.teamShots);
-   $('leaderStatus').textContent=`DONE · ${ap.start} THROUGH ${new Date(ap.endExclusive+'T12:00:00Z').toISOString().slice(0,10)} (END EXCLUSIVE) · VERIFY AGAINST INSIGHTS`;
- }else{$('teamShots').textContent='--';$('leaderStatus').textContent=ap.error||ap.status||'ACTIVITY DATA UNAVAILABLE';}
+   $('leaderStatus').textContent=`${ap.start} TO ${ap.endExclusive} (END EXCLUSIVE) · ${ap.status||'READY'} · UPDATED WEEKLY`;
+ }else{$('teamShots').textContent=ap.teamShots==null?'--':led(ap.teamShots);$('leaderStatus').textContent=ap.error||ap.status||'ACTIVITY DATA UNAVAILABLE';}
  const lm=d.lastMonth||{};
  $('lastMonthLabel').textContent=lm.month?new Date(lm.month+'-15T12:00:00Z').toLocaleDateString('en-CA',{month:'long',year:'numeric',timeZone:'UTC'}).toUpperCase():'LAST MONTH';
  $('lastMonthScore').textContent=lm.sales==null?'--':points(lm.sales);
  $('lastMonthGoals').textContent=lm.deals==null?'--':led(lm.deals);
  $('lastMonthPct').textContent=lm.sales==null?'--':(lm.sales/TARGET*100).toFixed(1)+'%';
+ $('lastMonthFreebies').textContent=lm.freebies==null?'--':led(lm.freebies);
+ $('freebies').textContent=led(d.freebies||0);
  $('status').textContent='● LIVE PIPEDRIVE';
  $('lastUpdated').textContent='UPDATED '+new Date(d.updatedAt).toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'});
 }

@@ -10,5 +10,16 @@
       "/api",
       "/api/*"
     ]
-  }
+  },
+  "triggers": {
+    "crons": [
+      "0 12 * * SUN"
+    ]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "ARENA_STATS",
+      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+    }
+  ]
 }

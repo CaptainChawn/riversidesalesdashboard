@@ -1,31 +1,32 @@
-# Riverside Arena V3: personal horns + previous-month scoreboard
+# Riverside Arena V3.2: Weekly TOP SHOOTERS + FREEBIES
 
-## Installation
-Upload the **contents** of this ZIP to the root of your existing GitHub repository, replacing matching files. Commit to `main` and allow Cloudflare Workers to deploy. Keep the existing `PIPEDRIVE_API_TOKEN` runtime secret.
+## IMPORTANT: One-time Cloudflare KV setup is required
 
-## What's new
-- Lee McKinnon: Boston horn, matched by confirmed Pipedrive owner ID `23026407` (and name fallback).
-- Steve Moe: Columbus Blue Jackets horn, matched by Pipedrive owner name. Once Steve's owner ID is known, it can be added to `PERSONAL_HORNS_BY_ID` in `public/app.js`.
-- Layne Clarke: Vancouver Canucks horn. Other sales reps fall back to their division horn.
-- Service and Consulting keep Chesapeake and Edmonton horns.
-- Five dedicated TEST buttons: Layne, Lee, Steve, Service, Consulting. TEST uses example data and never changes Pipedrive.
-- All five divisions contribute to the $300,000 monthly company target.
-- Division standings are sorted by current-month points on every refresh (more frequently than the requested twice daily).
-- Previous calendar month's score, qualifying goals and target percentage shown in a compact summary. Last-month API fetch is cached in Cloudflare's per-location cache for 12 hours, with an error fallback.
-- $0 Service deals do not trigger a celebration and are excluded from the GOALS count.
-- Existing audio files and horn rules preserved; milestone audio not included.
-- Static JS/CSS cache-busting query version applied.
+This release **cannot be deployed as-is** until you replace the KV namespace ID placeholder in `wrangler.jsonc`. The placeholder is deliberate: a KV namespace must be created in your own Cloudflare account.
 
-## Known limitation
-TOP SHOOTERS remains temporarily disabled because the previous historical activity scan triggered Cloudflare 1102 resource errors. This build deliberately does not restore the unbounded activity scan. It needs a separate bounded/weekly persistent snapshot implementation.
+1. In Cloudflare dashboard, open **Workers & Pages > KV** (or **Storage & databases > KV**), create a namespace named `riverside-arena-stats`.
+2. Copy the namespace ID. In `wrangler.jsonc`, replace `REPLACE_WITH_YOUR_KV_NAMESPACE_ID` with that exact ID.
+3. In the Worker settings, add a **runtime secret** named `ARENA_ADMIN_KEY` containing a long random value (do not put the value in GitHub). Keep the existing `PIPEDRIVE_API_TOKEN` runtime secret.
+4. Upload the package contents to the root of your existing GitHub repo, commit to `main`, and deploy via Cloudflare.
+5. Verify `https://riversidesalesdashboard.sean-3aa.workers.dev/api/dashboard` includes `freebies` and `appointments.status`.
+6. The scheduled Worker runs **Sundays at 12:00 UTC** (4 a.m. Pacific Standard Time / 5 a.m. Pacific Daylight Time). It calculates the previous Sunday–Saturday's completed In-Person Meetings. Until the first scheduled run, TOP SHOOTERS will display `AWAITING WEEKLY SNAPSHOT`.
+7. To populate immediately, run a POST to `/api/admin/refresh-shooters` with request header `X-Arena-Admin-Key: <your secret>`. You can use PowerShell:
 
-## Validation
-1. Open `/api/dashboard` and verify `lastMonth` has sales and goals and that `recentWins` has owner names.
-2. Open the dashboard and click ENABLE HORNS, then each of the five TEST buttons.
-3. Confirm Lee's Boston horn and Steve's Columbus horn and the personalized GOAL screen.
-4. Confirm division rankings and that the TEAM SCORE equals ALL DIVISIONS.
-5. Existing wins will not replay because of the stored seen-win IDs. Use test buttons to verify horns.
-6. If Cloudflare Error 1102 returns, inspect Worker logs for CPU/subrequest limits.
+   ```powershell
+   $headers = @{ 'X-Arena-Admin-Key' = 'YOUR_SECRET' }
+   Invoke-RestMethod -Method Post -Uri 'https://riversidesalesdashboard.sean-3aa.workers.dev/api/admin/refresh-shooters' -Headers $headers
+   ```
 
-## Layne horn fix (Nov 3)
-Pipedrive returns ownerId `23013559` and ownerName `Layne`. Match by ID to Vancouver Canucks horn; add `layne` name fallback. Refresh TV browser after deploy. Old wins do not replay automatically.
+   Don't share or commit your admin key. The refresh endpoint is authenticated; the public dashboard does not expose the key.
+
+## Logic
+
+- **FREEBIES:** number of $0 Won deals in Service Pipeline in the current calendar month; no additional Pipedrive API calls. Never a horn or goal. Resets automatically each month. Previous-month Freebies are also shown in the historical panel.
+- **TOP SHOOTERS:** only Pipedrive In-Person Meeting activities with `done=true` and completion date in the previous Sunday–Saturday week, grouped by assigned rep. Weekly calculation is written to KV, then read without activity API requests during regular refreshes.
+- **Safety:** activity scan capped at 8 pages of 500; if incomplete, the saved snapshot is labelled `PARTIAL — ACTIVITY PAGE LIMIT`, not misrepresented as a final count. Pipedrive pagination and completion timestamp availability may require follow-up adjustment based on live API data.
+- **Other features:** personalized horns (Layne ID `23013559`, Lee ID `23026407`), five test buttons, last-month stats, ranked divisions, and all five divisions counting toward $300K remain unchanged.
+- The scheduled snapshot is **not retroactive**: if meetings are marked complete after the snapshot, use the protected manual refresh.
+
+## Operational note
+
+The weekly activity scan may still hit Cloudflare resource limits on very large Pipedrive accounts, even though it no longer runs every minute. If it fails, inspect Worker logs and consider a more efficient Pipedrive query or a paid Worker plan. No inaccurate weekly totals should be shown as final.

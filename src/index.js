@@ -89,10 +89,12 @@ async function lastMonthSnapshot(env,resolved){
   const rows=await Promise.all(resolved.map(async p=>{
     const deals=await monthWonDeals(p.id,env.PIPEDRIVE_API_TOKEN,-1);
     return {name:p.name,sales:deals.reduce((n,d)=>n+Number(d.value||0),0),
-      deals:deals.filter(d=>p.name!=="Service Pipeline"||Number(d.value||0)>0).length};
+      deals:deals.filter(d=>p.name!=="Service Pipeline"||Number(d.value||0)>0).length,
+      freebies:p.name==="Service Pipeline"?deals.filter(d=>Number(d.value)===0).length:0};
   }));
   const snapshot={month:`${m.year}-${m.month}`,sales:rows.reduce((n,p)=>n+p.sales,0),
-    deals:rows.reduce((n,p)=>n+p.deals,0),pipelines:rows};
+    deals:rows.reduce((n,p)=>n+p.deals,0),
+    freebies:rows.reduce((n,p)=>n+(p.freebies||0),0),pipelines:rows};
   await cache.put(cacheKey,new Response(JSON.stringify(snapshot),{
     headers:{"cache-control":"public, max-age=43200","content-type":"application/json"}
   }));
@@ -110,54 +112,64 @@ function previousWeek() {
   return { start, endExclusive: end };
 }
 
-async function appointmentLeaderboard(token) {
-  const week = previousWeek();
-  try {
-    const [typesBody, usersBody] = await Promise.all([
-      pdFetch('/api/v1/activityTypes', token), pdFetch('/api/v1/users', token)
-    ]);
-    const activityType = (typesBody.data || []).find(t =>
-      String(t.name || '').trim().toLowerCase() === 'in-person meeting');
-    if (!activityType) throw new Error('In-Person Meeting activity type not found');
-    const names = new Map((usersBody.data || []).map(u => [String(u.id), u.name]));
-    const counts = new Map();
-    let cursor = null, complete = false, examined = 0;
-    // Completed activities can be created months earlier. Never filter by add_time.
-    // The API returns a completion timestamp as marked_as_done_time when available.
-    // Scan completed records and sort by update_time so recently completed activities
-    // are encountered early. An incomplete scan is NOT presented as a final score.
-    for (let page = 0; page < 30; page++) {
-      const body = await pdFetch('/api/v2/activities', token, {
-        done: 1, sort_by: 'update_time', sort_direction: 'desc', limit: 500,
-        ...(cursor ? { cursor } : {})
-      });
-      const items = body.data || [];
-      examined += items.length;
-      for (const activity of items) {
-        if (!(activity.done === true || activity.done === 1 || String(activity.done) === '1')) continue;
-        if (String(activity.type) !== String(activityType.key_string)) continue;
-        const completed = activity.marked_as_done_time || activity.done_time || activity.completed_time;
-        if (!completed) continue;
-        const date = dateParts(String(completed).includes('T') || /[zZ]|[+-]\d\d:\d\d$/.test(String(completed)) ? completed : String(completed).replace(' ', 'T') + 'Z');
-        const day = `${date.year}-${date.month}-${date.day}`;
-        if (day < week.start || day >= week.endExclusive) continue;
-        const id = String(activity.owner_id?.id ?? activity.owner_id ?? activity.user_id?.id ?? activity.user_id ?? '');
-        if (id) counts.set(id, (counts.get(id) || 0) + 1);
-      }
-      cursor = body.additional_data?.next_cursor || null;
-      if (!cursor || !items.length) { complete = true; break; }
+// Runs only in a scheduled Worker, never in the live dashboard request.
+async function calculateWeeklyShooters(token) {
+  const week=previousWeek();
+  const [typesBody,usersBody]=await Promise.all([
+    pdFetch('/api/v1/activityTypes',token),pdFetch('/api/v1/users',token)
+  ]);
+  const type=(typesBody.data||[]).find(t=>String(t.name||'').trim().toLowerCase()==='in-person meeting');
+  if(!type) throw new Error('In-Person Meeting activity type not found');
+  const names=new Map((usersBody.data||[]).map(u=>[String(u.id),String(u.name||'')]));
+  const counts=new Map();let cursor=null,examined=0,complete=false;
+  const seenIds=new Set();
+  // Bound request volume. Incomplete snapshots are clearly labelled, never silently presented as final.
+  for(let page=0;page<8;page++) {
+    const body=await pdFetch('/api/v2/activities',token,{
+      done:true,sort_by:'update_time',sort_direction:'desc',limit:500,
+      ...(cursor?{cursor}:{})
+    });
+    const items=body.data||[];examined+=items.length;
+    for(const activity of items){
+      if(!(activity.done===true||activity.done===1||String(activity.done)==='1'))continue;
+      if(String(activity.type)!==String(type.key_string))continue;
+      const completed=activity.marked_as_done_time||activity.done_time||activity.completed_time;
+      if(!completed)continue;
+      // Pipedrive often returns UTC timestamps as 'YYYY-MM-DD HH:mm:ss'.
+      const parsed=String(completed).includes('T')||/[zZ]|[+-]\d\d:\d\d$/.test(String(completed))
+        ? completed:String(completed).replace(' ','T')+'Z';
+      const d=dateParts(parsed),day=`${d.year}-${d.month}-${d.day}`;
+      if(day<week.start||day>=week.endExclusive)continue;
+      const id=String(activity.id||'');if(id&&seenIds.has(id))continue;
+      if(id)seenIds.add(id);
+      const owner=String(activity.owner_id?.id??activity.owner_id??activity.user_id?.id??activity.user_id??'');
+      if(owner)counts.set(owner,(counts.get(owner)||0)+1);
     }
-    const leaders = [...counts.entries()].map(([id, shots]) => ({
-      name: names.get(id) || `Rep ${id}`, shots
-    })).sort((a,b) => b.shots-a.shots || a.name.localeCompare(b.name));
-    return {start: week.start, endExclusive: week.endExclusive,
-      leaders, teamShots: leaders.reduce((sum, p) => sum+p.shots, 0),
-      complete, examined, status: complete ? 'READY' : 'INCOMPLETE ACTIVITY SCAN'};
-  } catch (error) {
-    return {start: week.start, endExclusive: week.endExclusive,
-      leaders: [], teamShots: null, complete: false,
-      status: 'VERIFY PIPEDRIVE', error: String(error.message || error)};
+    cursor=body.additional_data?.next_cursor||null;
+    if(!cursor||!items.length){complete=true;break;}
+    // update_time is sorted descending. Once an entire page is older than the end of
+    // the target week, there may still be late-edited completions, so do not claim completeness.
   }
+  const leaders=[...counts].map(([id,shots])=>({name:names.get(id)||`Rep ${id}`,shots}))
+    .sort((a,b)=>b.shots-a.shots||a.name.localeCompare(b.name));
+  return {...week,leaders,teamShots:leaders.reduce((n,r)=>n+r.shots,0),complete,
+    examined,status:complete?'READY':'PARTIAL — ACTIVITY PAGE LIMIT',
+    calculatedAt:new Date().toISOString()};
+}
+async function readWeeklyShooters(env){
+  const week=previousWeek();
+  if(!env.ARENA_STATS)return {...week,leaders:[],teamShots:null,complete:false,status:'KV STORAGE NOT CONFIGURED'};
+  const result=await env.ARENA_STATS.get(`shooters:${week.start}`,'json');
+  return result||{...week,leaders:[],teamShots:null,complete:false,status:'AWAITING WEEKLY SNAPSHOT'};
+}
+async function runWeeklySnapshot(env){
+  if(!env.ARENA_STATS)throw new Error('ARENA_STATS KV binding missing');
+  if(!env.PIPEDRIVE_API_TOKEN)throw new Error('Pipedrive token missing');
+  const snapshot=await calculateWeeklyShooters(env.PIPEDRIVE_API_TOKEN);
+  await env.ARENA_STATS.put(`shooters:${snapshot.start}`,JSON.stringify(snapshot),{
+    expirationTtl:60*60*24*28
+  });
+  return snapshot;
 }
 
 async function dashboard(env) {
@@ -189,6 +201,7 @@ async function dashboard(env) {
       countsTowardTarget: p.countsTowardTarget,
       sales: deals.reduce((sum, d) => sum + Number(d.value || 0), 0),
       deals: deals.filter(d => p.name !== "Service Pipeline" || Number(d.value || 0) > 0).length,
+      freebies: p.name === "Service Pipeline" ? deals.filter(d => Number(d.value) === 0).length : 0,
       recentWins: true
         ? deals.filter(d => p.name !== "Service Pipeline" || Number(d.value || 0) > 0).map(d => ({
             id: `${p.id}:${d.id}`,
@@ -221,18 +234,27 @@ async function dashboard(env) {
       deals: results.reduce((sum, p) => sum + p.deals, 0)
     },
     lastMonth,
-    appointments: {
-      leaders: [], teamShots: null, complete: false,
-      status: "TEMPORARILY DISABLED — ACTIVITY SCAN PAUSED"
-    },
+    freebies: results.reduce((sum,p)=>sum+(p.freebies||0),0),
+    appointments: await readWeeklyShooters(env),
     updatedAt: new Date().toISOString()
   });
 }
 
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runWeeklySnapshot(env));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // Optional protected manual refresh, useful after a delayed completion or initial deploy.
+    if(url.pathname==='/api/admin/refresh-shooters'){
+      if(request.method!=='POST')return json({error:'POST required'},405);
+      const supplied=request.headers.get('X-Arena-Admin-Key')||'';
+      if(!env.ARENA_ADMIN_KEY||supplied!==env.ARENA_ADMIN_KEY)return json({error:'Unauthorized'},401);
+      try{return json(await runWeeklySnapshot(env));}
+      catch(error){return json({error:String(error.message||error)},500);}
+    }
     if (url.pathname === "/api/dashboard" || url.pathname === "/api/dashboard/") {
       try {
         return await dashboard(env);
